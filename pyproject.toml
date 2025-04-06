@@ -1,0 +1,17 @@
+[project]
+name = "qdrant-docs-mcp"
+version = "0.1.0"
+description = "Qdrant Documentation MCP"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = []
+requires-python = ">=3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py38" 
