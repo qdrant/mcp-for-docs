@@ -17,12 +17,12 @@ This MCP server is read-only, model is only allowed retrieve data about the docu
 
 ## ToDo
 
-- [ ] Prepare example of MCP-ready documentation for Qdrant.
-- [ ] Update `mcp-server-qdrant` to be installable and configurable as a package.
-   - [ ] Configurable output format
+- [x] Prepare example of MCP-ready documentation for Qdrant.
+- [x] Update `mcp-server-qdrant` to be installable and configurable as a package.
+   - [x] Configurable output format
    - [ ] Configurable filters
-   - [ ] Configurable prompts and other envs
-- [ ] Deploy MCP server and test it with the example documentation.
+   - [x] Configurable prompts and other envs
+- [x] Deploy MCP server and test it with the example documentation.
 
 
 ## Setup
@@ -53,3 +53,18 @@ This is a Python project using `uv` for package management.
 
 - Use `ruff` for linting and formatting
 - The project uses `hatchling` as the build backend 
+
+
+### MCP Server Inspector
+
+```bash
+uv run mcp dev qdrant_docs_mcp/server.py
+```
+
+### Run for serving
+
+```bash
+uv run qdrant_docs_mcp/main.py --transport=sse
+```
+
+

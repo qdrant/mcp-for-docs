@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "qdrant-docs": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
