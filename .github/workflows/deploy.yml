@@ -23,7 +23,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         docker build -t qdrant/mcp-for-docs:${{ github.sha }} .
-        docker save -o minicoil-demo.tar qdrant/mcp-for-docs:${{ github.sha }}
+        docker save -o mcp-for-docs.tar qdrant/mcp-for-docs:${{ github.sha }}
         chmod 666 mcp-for-docs.tar
         ls -al .
     - name: copy data with ssh
@@ -32,7 +32,7 @@ jobs:
         host: ${{ secrets.DEPLOY_HOST }}
         username: ${{ secrets.DEPLOY_USER }}
         key: ${{ secrets.DEPLOY_SSH_KEY }}
-        source: "minicoil-demo.tar"
+        source: "mcp-for-docs.tar"
         target: "deployment/data"
 
     - name: run images
