@@ -22,4 +22,4 @@ target-version = "py38"
 mcp-server-qdrant = { git = "https://github.com/qdrant/mcp-server-qdrant.git" }
 
 [project.scripts]
-mcp-for-docs = "qdrant_docs_mcp.main:main"
+run-server = "qdrant_docs_mcp.main:main"

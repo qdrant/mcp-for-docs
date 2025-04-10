@@ -14,6 +14,6 @@ RUN uv pip install --system --no-cache-dir mcp-server-qdrant
 EXPOSE 8000
 
 # Run the server with SSE transport
-CMD uvx mcp-for-docs --transport sse
+CMD uvx run-server --transport sse
 
 
