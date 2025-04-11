@@ -1,5 +1,5 @@
 [project]
-name = "qdrant-docs-mcp"
+name = "mcp-for-docs"
 version = "0.1.0"
 description = "Qdrant Documentation MCP"
 authors = [
@@ -22,4 +22,13 @@ target-version = "py38"
 mcp-server-qdrant = { git = "https://github.com/qdrant/mcp-server-qdrant.git" }
 
 [project.scripts]
-run-server = "qdrant_docs_mcp.main:main"
+mcp-for-docs = "qdrant_docs_mcp.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+asyncio_mode = "auto"
+
+[tool.hatch.build.targets.wheel]
+packages = ["qdrant_docs_mcp"]

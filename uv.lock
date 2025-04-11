@@ -464,6 +464,17 @@ cli = [
 ]
 
 [[package]]
+name = "mcp-for-docs"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "mcp-server-qdrant" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mcp-server-qdrant", git = "https://github.com/qdrant/mcp-server-qdrant.git" }]
+
+[[package]]
 name = "mcp-server-qdrant"
 version = "0.7.1"
 source = { git = "https://github.com/qdrant/mcp-server-qdrant.git#181be17142fadf4668ca84859b2ec5152f060223" }
@@ -1035,17 +1046,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/eb/58/1e4acd7ff7637ed56
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dd/b4/bd676f91f5234ab59282e4a110f324029684482cbe08e7a1c77b6338013b/qdrant_client-1.13.3-py3-none-any.whl", hash = "sha256:f52cacbb936e547d3fceb1aaed3e3c56be0ebfd48e8ea495ea3dbc89c671d1d2", size = 306674 },
 ]
-
-[[package]]
-name = "qdrant-docs-mcp"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "mcp-server-qdrant" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "mcp-server-qdrant", git = "https://github.com/qdrant/mcp-server-qdrant.git" }]
 
 [[package]]
 name = "requests"

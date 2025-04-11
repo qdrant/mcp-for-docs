@@ -5,8 +5,14 @@ WORKDIR /app
 # Install uv for package management
 RUN pip install --no-cache-dir uv
 
-# Install the mcp-server-qdrant package
-RUN uv pip install --system --no-cache-dir mcp-server-qdrant
+# Copy the project files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies
+RUN uv pip install --system --no-cache-dir .
+
+# Copy the rest of the application
+COPY . .
 
 # RUN python -c 'from fastembed import TextEmbedding; TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")'
 
@@ -14,6 +20,6 @@ RUN uv pip install --system --no-cache-dir mcp-server-qdrant
 EXPOSE 8000
 
 # Run the server with SSE transport
-CMD uvx run-server --transport sse
+CMD uvx mcp-for-docs --transport sse
 
 
