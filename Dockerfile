@@ -7,14 +7,14 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for package management
-RUN pip install --no-cache-dir uv
+# Install uv and hatch for package management and building
+RUN pip install --no-cache-dir uv hatch
 
 # Copy the project files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies
-RUN uv pip install --system --no-cache-dir .
+# Install dependencies and build the package
+RUN uv pip install --system --no-cache-dir -e .
 
 # Copy the rest of the application
 COPY . .
@@ -25,6 +25,6 @@ COPY . .
 EXPOSE 8000
 
 # Run the server with SSE transport
-CMD uvx mcp-for-docs --transport sse
+CMD ["python", "-m", "qdrant_docs_mcp.main", "--transport", "sse"]
 
 
