@@ -79,7 +79,7 @@ def read_file_content(file_path: Path) -> str:
         return f.read()
 
 
-def process_snippets_directory(snippets_root: Path, language_filter: str = None) -> List[Dict[str, Any]]:
+def process_snippets_directory(snippets_root: Path, language_filter: str = None, package_name: str = None, package_version: str = None) -> List[Dict[str, Any]]:
     """Process the snippets directory and return a list of processed snippets.
     
     Args:
@@ -87,6 +87,17 @@ def process_snippets_directory(snippets_root: Path, language_filter: str = None)
         language_filter: Optional language to filter snippets by (e.g. 'python', 'http')
     """
     processed_snippets = []
+
+    major_version = None
+    minor_version = None
+    patch_version = None
+    
+    # Parse version from package_version
+    if package_version:
+        version_parts = package_version.split(".")
+        major_version = int(version_parts[0])
+        minor_version = int(version_parts[1]) if len(version_parts) > 1 else None
+        patch_version = int(version_parts[2]) if len(version_parts) > 2 else None
     
     # Iterate through categories
     for category_dir in snippets_root.iterdir():
@@ -126,7 +137,13 @@ def process_snippets_directory(snippets_root: Path, language_filter: str = None)
                     "sub_category": subcategory,
                     "language": language,
                     "snippet": snippet,
-                    "description": description
+                    "description": description,
+                    "package_name": package_name,
+                    "version": {
+                        "major": major_version,
+                        "minor": minor_version,
+                        "patch": patch_version,
+                    },
                 })
     
     return processed_snippets
@@ -144,18 +161,30 @@ def main():
                        help="FastEmbed model name to use for embeddings")
     parser.add_argument("--language", type=str, default=None,
                        help="Optional language filter (e.g. 'python', 'http')")
+    parser.add_argument("--package-name", type=str, default="qdrant-client",
+                       help="Name of the package to encode snippets for, this field will be available for filtering on the MCP server")
+    parser.add_argument("--package-version", type=str, default=None,
+                       help="Version of the package to encode snippets for, this field will be available for filtering on the MCP server. Example: 1.12.3")
+
     args = parser.parse_args()
+
+    qdrant_api_key = os.getenv("QDRANT_API_KEY")
     
     # Initialize clients
     embedding_provider = FastEmbedProvider(model_name=args.model_name)
-    qdrant_client = QdrantClient(url=args.qdrant_url)
+    qdrant_client = QdrantClient(url=args.qdrant_url, api_key=qdrant_api_key)
     
     # Process snippets
     snippets_root = Path(args.snippets_root)
     if not snippets_root.exists():
         raise ValueError(f"Snippets root directory does not exist: {snippets_root}")
         
-    processed_snippets = process_snippets_directory(snippets_root, language_filter=args.language)
+    processed_snippets = process_snippets_directory(
+        snippets_root,
+        language_filter=args.language,
+        package_name=args.package_name,
+        package_version=args.package_version,
+    )
 
     vector_name = embedding_provider.get_vector_name()
     
@@ -173,6 +202,38 @@ def main():
                 default_segment_number=1, # For minimal snapshot size
             )
         )
+
+        # Create payload index for package_name and versions
+        qdrant_client.create_payload_index(
+            collection_name=args.collection_name,
+            field_name="metadata.package_name",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+
+        # Create payload index for package_name, language and versions
+        qdrant_client.create_payload_index(
+            collection_name=args.collection_name,
+            field_name="metadata.language",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+
+        qdrant_client.create_payload_index(
+            collection_name=args.collection_name,
+            field_name="metadata.version.major",
+            field_schema=models.PayloadSchemaType.INTEGER,
+        )
+
+        qdrant_client.create_payload_index(
+            collection_name=args.collection_name,
+            field_name="metadata.version.minor",
+            field_schema=models.PayloadSchemaType.INTEGER,
+        )
+
+        qdrant_client.create_payload_index(
+            collection_name=args.collection_name,
+            field_name="metadata.version.patch",
+            field_schema=models.PayloadSchemaType.INTEGER,
+        )
     
     # Encode and upload snippets
     for snippet in processed_snippets:
@@ -180,19 +241,13 @@ def main():
         text_to_encode = snippet['description']
         embedding = next(embedding_provider.embedding_model.embed([text_to_encode])).tolist()
         
-        document = snippet["description"]
+        document = snippet.pop("description")
 
         # Prepare payload
-        metadata = {
-            "category": snippet["category"],
-            "sub_category": snippet["sub_category"],
-            "language": snippet["language"],
-            "snippet": snippet["snippet"],
-        }
+        metadata = {**snippet}
         
         # Generate UUID
-        point_id = generate_uuid_from_content(f"{snippet['category']}_{snippet['sub_category']}_{snippet['language']}")
-        
+        point_id = generate_uuid_from_content(f"{snippet['category']}_{snippet['sub_category']}_{snippet['language']}_{snippet['package_name']}_{snippet['version']}")
         
         # Upload to Qdrant
         qdrant_client.upsert(

@@ -28,13 +28,13 @@ qdrant_settings = QdrantSettings(
             name='language',
             description='The programming language used in the code snippet.',
             field_type="keyword",
-            condition="=="
+            condition="==",
         ),
         FilterableField(
-            name="module_name",
-            description="The name of the module to search snippets for",
+            name="package_name",
+            description="The name of the package to search snippets for",
             field_type="keyword",
-            condition="==",
+            condition="in",
         ),
         # todo: support version filtering
         # FilterableField(

@@ -25,6 +25,6 @@ COPY . .
 EXPOSE 8000
 
 # Run the server with SSE transport
-CMD ["python", "-m", "qdrant_docs_mcp.main", "--transport", "sse"]
+CMD ["python", "-m", "qdrant_docs_mcp.main", "--transport", "streamable-http"]
 
 
