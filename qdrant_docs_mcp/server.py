@@ -34,7 +34,7 @@ qdrant_settings = QdrantSettings(
             name="package_name",
             description="The name of the package to search snippets for",
             field_type="keyword",
-            condition="in",
+            condition="any",
         ),
         # todo: support version filtering
         # FilterableField(
