@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description="qdrant-docs-mcp")
     parser.add_argument(
         "--transport",
-        choices=["stdio", "sse"],
+        choices=["stdio", "sse", "streamable-http"],
         default="stdio",
     )
     args = parser.parse_args()

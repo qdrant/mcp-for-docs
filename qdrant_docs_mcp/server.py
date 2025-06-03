@@ -1,7 +1,6 @@
 from mcp_server_qdrant.mcp_server import QdrantMCPServer
 from mcp_server_qdrant.qdrant import Entry
-from mcp_server_qdrant.settings import ToolSettings, QdrantSettings, EmbeddingProviderSettings
-
+from mcp_server_qdrant.settings import ToolSettings, QdrantSettings, EmbeddingProviderSettings, FilterableField
 
 QDRANT_SEARCH_DESCRIPTION = """
 Search for examples of using Qdrant client.
@@ -11,11 +10,10 @@ Lookup qdrant query syntax, awailable methods, features and possible configurati
 class DocsMCPServer(QdrantMCPServer):
 
     def format_entry(self, entry: Entry) -> str:
-
         return f"""
-        Description: {entry.metadata["description"]}
+        Description: {entry.content}
         
-        Example Snipper:
+        Example Snippet:
 
         {entry.metadata["snippet"]}
         
@@ -24,7 +22,41 @@ class DocsMCPServer(QdrantMCPServer):
 
     
 tool_settings = ToolSettings()
-qdrant_settings = QdrantSettings()
+qdrant_settings = QdrantSettings(
+    filterable_fields=[
+        FilterableField(
+            name='language',
+            description='The programming language used in the code snippet.',
+            field_type="keyword",
+            condition="==",
+        ),
+        FilterableField(
+            name="package_name",
+            description="The name of the package to search snippets for",
+            field_type="keyword",
+            condition="in",
+        ),
+        # todo: support version filtering
+        # FilterableField(
+        #     name="major_version",
+        #     description="The major version of the module to search snippets for",
+        #     field_type="integer",
+        #     condition="==",
+        # ),
+        # FilterableField(
+        #     name="minor_version",
+        #     description="The minor version of the module to search snippets for",
+        #     field_type="integer",
+        #     condition="==",
+        # ),
+        # FilterableField(
+        #     name="patch_version",
+        #     description="The patch version of the module to search snippets for",
+        #     field_type="integer",
+        #     condition="==",
+        # ),
+    ]
+)
 
 
 tool_settings.tool_find_description = QDRANT_SEARCH_DESCRIPTION
@@ -33,7 +65,7 @@ qdrant_settings.collection_name = "qdrant-docs-mcp"
 qdrant_settings.search_limit = 3
 qdrant_settings.read_only = True
 
-mcp = QdrantMCPServer(
+mcp = DocsMCPServer(
     tool_settings=tool_settings,
     qdrant_settings=qdrant_settings,    
     embedding_provider_settings=EmbeddingProviderSettings(),
