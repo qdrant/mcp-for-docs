@@ -15,13 +15,23 @@ def main():
         choices=["stdio", "sse", "streamable-http"],
         default="stdio",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+    )
     args = parser.parse_args()
 
     # Import is done here to make sure environment variables are loaded
     # only after we make the changes.
     from qdrant_docs_mcp.server import mcp
 
-    mcp.run(transport=args.transport)
+    mcp.run(transport=args.transport, port=args.port, host=args.host)
 
 
 if __name__ == "__main__":

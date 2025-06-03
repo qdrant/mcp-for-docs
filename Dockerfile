@@ -19,12 +19,12 @@ RUN uv pip install --system --no-cache-dir -e .
 # Copy the rest of the application
 COPY . .
 
-# RUN python -c 'from fastembed import TextEmbedding; TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")'
+RUN python -c 'from fastembed import TextEmbedding; TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")'
 
 # Expose the default port for SSE transport
 EXPOSE 8000
 
 # Run the server with SSE transport
-CMD ["python", "-m", "qdrant_docs_mcp.main", "--transport", "streamable-http"]
+CMD ["python", "-m", "qdrant_docs_mcp.main", "--transport", "streamable-http", "--port", "8000", "--host", "0.0.0.0"]
 
 
