@@ -574,7 +574,7 @@ requires-dist = [{ name = "mcp-server-qdrant", git = "https://github.com/qdrant/
 [[package]]
 name = "mcp-server-qdrant"
 version = "0.7.1"
-source = { git = "https://github.com/qdrant/mcp-server-qdrant.git?branch=filters#30e0bd7ae8e30d30b827fc95aded3aa20dab7e5c" }
+source = { git = "https://github.com/qdrant/mcp-server-qdrant.git?branch=filters#e068eb21cc7e2aae0eb508e5e2261822e28fb848" }
 dependencies = [
     { name = "fastembed" },
     { name = "fastmcp" },
