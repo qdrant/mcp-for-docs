@@ -3,7 +3,7 @@ name = "mcp-for-docs"
 version = "0.1.0"
 description = "Qdrant Documentation MCP"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Qdrant Team", email = "info@qdrant.tech"}
 ]
 dependencies = [
     "mcp-server-qdrant",
@@ -16,10 +16,10 @@ build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 88
-target-version = "py38" 
+target-version = "py39"
 
 [tool.uv.sources]
-mcp-server-qdrant = { git = "https://github.com/qdrant/mcp-server-qdrant.git", branch = "filters" }
+mcp-server-qdrant = { git = "https://github.com/qdrant/mcp-server-qdrant.git", branch = "master" }
 
 [project.scripts]
 mcp-for-docs = "qdrant_docs_mcp.main:main"
