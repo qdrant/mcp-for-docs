@@ -14,17 +14,6 @@ This project should serve as an example of how you can build ready-to-use MCP se
 
 This MCP server is read-only, model is only allowed retrieve data about the documentation.
 
-
-## ToDo
-
-- [x] Prepare example of MCP-ready documentation for Qdrant.
-- [x] Update `mcp-server-qdrant` to be installable and configurable as a package.
-   - [x] Configurable output format
-   - [ ] Configurable filters
-   - [x] Configurable prompts and other envs
-- [x] Deploy MCP server and test it with the example documentation.
-
-
 ## Setup
 
 This is a Python project using `uv` for package management.

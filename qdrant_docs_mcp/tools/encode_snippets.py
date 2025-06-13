@@ -157,7 +157,7 @@ def main():
                        help="Name of the Qdrant collection")
     parser.add_argument("--qdrant-url", type=str, default="http://localhost:6333",
                        help="Qdrant server URL")
-    parser.add_argument("--model-name", type=str, default="sentence-transformers/all-MiniLM-L6-v2",
+    parser.add_argument("--model-name", type=str, default="mixedbread-ai/mxbai-embed-large-v1",
                        help="FastEmbed model name to use for embeddings")
     parser.add_argument("--language", type=str, default=None,
                        help="Optional language filter (e.g. 'python', 'http')")
