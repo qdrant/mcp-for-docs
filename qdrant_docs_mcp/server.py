@@ -73,5 +73,5 @@ embedding_provider_settings.model_name = "mixedbread-ai/mxbai-embed-large-v1"
 mcp = DocsMCPServer(
     tool_settings=tool_settings,
     qdrant_settings=qdrant_settings,
-    embedding_provider_settings=EmbeddingProviderSettings(),
+    embedding_provider_settings=embedding_provider_settings,
 )
