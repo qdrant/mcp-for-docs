@@ -7,6 +7,9 @@ from mcp_server_qdrant.settings import (
     FilterableField,
 )
 
+from qdrant_docs_mcp.log import DocsStructuredLoggingMiddleware
+
+
 QDRANT_SEARCH_DESCRIPTION = """
 Search for examples of using Qdrant client.
 Lookup qdrant query syntax, awailable methods, features and possible configurations.
@@ -75,3 +78,5 @@ mcp = DocsMCPServer(
     qdrant_settings=qdrant_settings,
     embedding_provider_settings=embedding_provider_settings,
 )
+
+mcp.add_middleware(DocsStructuredLoggingMiddleware())
