@@ -43,7 +43,7 @@ jobs:
           docker images;
           docker kill mcp-for-docs || true;
           docker rm mcp-for-docs || true;
-          docker run -d -p 8000:8000 --restart unless-stopped -e QDRANT_URL="${{ secrets.QDRANT_URL }}" -e QDRANT_API_KEY="${{ secrets.QDRANT_API_KEY }}" --network=qdrant-net --name mcp-for-docs qdrant/mcp-for-docs:${{ github.sha }};
+          docker run -d -p 8000:8000 --restart unless-stopped -v $(pwd)/mc-for-docs-logs:/app/logs -e QDRANT_URL="${{ secrets.QDRANT_URL }}" -e QDRANT_API_KEY="${{ secrets.QDRANT_API_KEY }}" --network=qdrant-net --name mcp-for-docs qdrant/mcp-for-docs:${{ github.sha }};
         host: ${{ secrets.DEPLOY_HOST }}
         user: ${{ secrets.DEPLOY_USER }}
         key: ${{ secrets.DEPLOY_SSH_KEY }}
