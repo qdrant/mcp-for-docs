@@ -19,7 +19,7 @@ RUN uv pip install --system --no-cache-dir -e .
 # Copy the rest of the application
 COPY . .
 
-RUN python -c 'from fastembed import TextEmbedding; TextEmbedding("mixedbread-ai/mxbai-embed-large-v1")'
+RUN python -c 'from fastembed import TextEmbedding; TextEmbedding("mixedbread-ai/mxbai-embed-large-v1")' && rm -rf /root/.cache/huggingface
 
 # Expose the default port for SSE transport
 EXPOSE 8000

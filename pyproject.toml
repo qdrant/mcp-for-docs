@@ -33,3 +33,8 @@ asyncio_mode = "auto"
 
 [tool.hatch.build.targets.wheel]
 packages = ["qdrant_docs_mcp"]
+
+[dependency-groups]
+dev = [
+    "ipython>=8.37.0",
+]
