@@ -32,7 +32,7 @@ class DocsStructuredLoggingMiddleware(Middleware):
             handler = RotatingFileHandler(
                 filename=log_path,
                 maxBytes=32 * 1024 * 1024,  # 32 MB
-                backupCount=50,  # number of rotated files to keep
+                backupCount=5,  # number of rotated files to keep
                 encoding="utf-8",
             )
 
@@ -59,9 +59,6 @@ class DocsStructuredLoggingMiddleware(Middleware):
 
         try:
             result = await call_next(context)
-            entry["result"] = "\n".join(
-                [content.text for content in result if isinstance(content, mcp_types.TextContent)]
-            )
 
             self.logger.log(self.log_level, json.dumps(entry))
 
