@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "mcp-server-qdrant",
     "fastmcp>=2.9.0",
+    "rich>=14.0.0",
 ]
 requires-python = ">=3.10"
 
