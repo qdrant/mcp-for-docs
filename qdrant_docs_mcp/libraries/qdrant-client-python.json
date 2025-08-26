@@ -1,0 +1,6 @@
+{
+    "name": "qdrant-client",
+    "github": "https://github.com/qdrant/qdrant",
+    "config_file": ".mcp-for-docs.json",
+    "language": "python"
+}
