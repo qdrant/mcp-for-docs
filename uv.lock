@@ -683,6 +683,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
     { name = "mcp-server-qdrant" },
+    { name = "pydantic" },
     { name = "rich" },
 ]
 
@@ -696,6 +697,7 @@ dev = [
 requires-dist = [
     { name = "fastmcp", specifier = ">=2.9.0" },
     { name = "mcp-server-qdrant", git = "https://github.com/qdrant/mcp-server-qdrant.git?branch=master" },
+    { name = "pydantic", specifier = ">=2.11.7" },
     { name = "rich", specifier = ">=14.0.0" },
 ]
 
