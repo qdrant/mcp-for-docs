@@ -4,6 +4,13 @@ import rich
 from pydantic import BaseModel
 
 
+class PartialSnippet(BaseModel):
+    context: str | None
+    content: str
+    language: str
+    source: str
+
+
 class Snippet(BaseModel):
     category: str
     sub_category: str
@@ -12,6 +19,7 @@ class Snippet(BaseModel):
     description: str
     package_name: str
     version: str
+    source: str
 
 
 class Library(BaseModel):
