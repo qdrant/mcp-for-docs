@@ -5,9 +5,10 @@ from pydantic import BaseModel
 
 
 class PartialSnippet(BaseModel):
-    context: str | None
-    content: str
-    language: str
+    category: str | None
+    description: str | None
+    snippet: str
+    language: str | None
     source: str
 
 
