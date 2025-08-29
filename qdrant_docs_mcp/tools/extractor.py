@@ -1,9 +1,11 @@
 from pathlib import Path
 from typing import Callable
 
+import nbformat
 import rich
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
+from nbconvert import MarkdownExporter
 from rst_to_myst.markdownit import MarkdownItRenderer
 from rst_to_myst.parser import to_docutils_ast
 
@@ -67,6 +69,25 @@ def extract_from_markdown(file: Path) -> list[PartialSnippet]:
 
     md = MarkdownIt("commonmark")
     tokens = md.parse(file.read_text())
+    root = SyntaxTreeNode(tokens)
+
+    return _extract_from_markdown_tree(root, str(file))
+
+
+@register_extractor("ipynb")
+def extract_from_notebook(file: Path) -> list[PartialSnippet]:
+    if not file.is_file():
+        raise ValueError
+
+    notebook = nbformat.reads(file.read_text(), as_version=4)
+    exporter: MarkdownExporter = MarkdownExporter(
+        config={"ClearOutputPreprocessor": {"enabled": True}}
+    )
+
+    body, _ = exporter.from_notebook_node(notebook)
+
+    md = MarkdownIt("commonmark")
+    tokens = md.parse(body)
     root = SyntaxTreeNode(tokens)
 
     return _extract_from_markdown_tree(root, str(file))
