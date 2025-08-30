@@ -1,5 +1,7 @@
+import argparse
 import contextlib
 import importlib.resources
+import os
 import subprocess
 import tempfile
 from collections.abc import Generator
@@ -8,6 +10,9 @@ from itertools import chain
 from pathlib import Path
 
 import rich
+from mcp_server_qdrant.embeddings.fastembed import FastEmbedProvider
+from qdrant_client import QdrantClient, models
+from rich.progress import track
 
 from qdrant_docs_mcp.tools.extractor import extract
 from qdrant_docs_mcp.tools.models import (
@@ -115,11 +120,44 @@ def extract_all(library: Library, config: LibraryConfig, repo: Path) -> list[Sni
     return snippets
 
 
-def import_snippets(snippets: list[Snippet]):
-    raise NotImplementedError
+def import_snippets(
+    qdrant_client: QdrantClient,
+    collection_name: str,
+    snippets: list[Snippet],
+    embedding_provider: FastEmbedProvider,
+):
+    for snippet in track(snippets, description="Uploading snippets..."):
+        # Combine description and snippet for embedding
+        embedding = next(
+            embedding_provider.embedding_model.embed(
+                [snippet.category + snippet.description]
+            )
+        ).tolist()
+
+        # Upload to Qdrant
+        qdrant_client.upsert(
+            collection_name=collection_name,
+            points=[
+                models.PointStruct(
+                    id=snippet.uuid,
+                    vector={
+                        embedding_provider.get_vector_name(): embedding,
+                    },
+                    payload={
+                        "document": snippet.document,
+                        "metadata": snippet.metadata,
+                    },
+                )
+            ],
+        )
 
 
-def import_library(name: str):
+def import_library(
+    name: str,
+    qdrant_client: QdrantClient,
+    collection_name: str,
+    embedding_provider: FastEmbedProvider,
+):
     library = _get_library_by_name(name)
     rich.print(library)
     with clone_repo(library.github) as repo:
@@ -130,11 +168,98 @@ def import_library(name: str):
 
         snippets = extract_all(library, config, repo)
 
-    import_snippets(snippets)
+    import_snippets(
+        qdrant_client=qdrant_client,
+        collection_name=collection_name,
+        snippets=snippets,
+        embedding_provider=embedding_provider,
+    )
+
+
+def ensure_collection(
+    qdrant_client: QdrantClient,
+    collection_name: str,
+    vector_name: str,
+    vector_size: int,
+):
+    if not qdrant_client.collection_exists(collection_name):
+        qdrant_client.create_collection(
+            collection_name=collection_name,
+            vectors_config={
+                vector_name: models.VectorParams(
+                    size=vector_size,
+                    distance=models.Distance.COSINE,
+                ),
+            },
+            optimizers_config=models.OptimizersConfigDiff(
+                default_segment_number=1,  # For minimal snapshot size
+            ),
+        )
+
+        # Create payload index for package_name and versions
+        qdrant_client.create_payload_index(
+            collection_name=collection_name,
+            field_name="metadata.package_name",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+
+        # Create payload index for package_name, language and versions
+        qdrant_client.create_payload_index(
+            collection_name=collection_name,
+            field_name="metadata.language",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
 
 
 def main():
-    import_library("numpy")
+    parser = argparse.ArgumentParser(description="Import snippets and store in Qdrant")
+
+    parser.add_argument(
+        "--library",
+        type=str,
+        required=True,
+        help="Name of library to import or all",
+    )
+    parser.add_argument(
+        "--collection-name",
+        type=str,
+        required=True,
+        help="Name of the Qdrant collection",
+    )
+    parser.add_argument(
+        "--qdrant-url",
+        type=str,
+        default="http://localhost:6333",
+        help="Qdrant server URL",
+    )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default="mixedbread-ai/mxbai-embed-large-v1",
+        help="FastEmbed model name to use for embeddings",
+    )
+
+    args = parser.parse_args()
+
+    qdrant_api_key = os.getenv("QDRANT_API_KEY")
+
+    # Initialize clients
+    embedding_provider = FastEmbedProvider(model_name=args.model_name)
+    qdrant_client = QdrantClient(url=args.qdrant_url, api_key=qdrant_api_key)
+
+    ensure_collection(
+        qdrant_client,
+        args.collection_name,
+        embedding_provider.get_vector_name(),
+        embedding_provider.get_vector_size(),
+    )
+
+    import_library(
+        name=args.library,
+        collection_name=args.collection_name,
+        qdrant_client=qdrant_client,
+        embedding_provider=embedding_provider,
+    )
 
 
 if __name__ == "__main__":

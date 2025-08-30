@@ -1,4 +1,6 @@
 from enum import Enum
+import hashlib
+import uuid
 
 import rich
 from pydantic import BaseModel
@@ -21,6 +23,22 @@ class Snippet(BaseModel):
     package_name: str
     version: str
     source: str
+
+    @property
+    def document(self) -> str:
+        return self.description
+
+    @property
+    def metadata(self) -> dict[str, str]:
+        return self.model_dump(exclude={"description"})
+
+    @property
+    def uuid(self) -> str:
+        content = str(self)
+        # Create a SHA-256 hash of the content
+        content_hash = hashlib.sha256(content.encode("utf-8")).digest()
+        # Use the first 16 bytes of the hash to create a UUID
+        return str(uuid.UUID(bytes=content_hash[:16]))
 
 
 class Library(BaseModel):
