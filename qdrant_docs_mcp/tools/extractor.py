@@ -81,6 +81,7 @@ def extract_from_notebook(file: Path) -> list[PartialSnippet]:
 
     notebook = nbformat.reads(file.read_text(), as_version=4)
     exporter: MarkdownExporter = MarkdownExporter(
+        optimistic_validation=True,
         config={"ClearOutputPreprocessor": {"enabled": True}}
     )
 
