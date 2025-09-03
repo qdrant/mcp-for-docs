@@ -1,0 +1,5 @@
+{
+    "name": "torchvision",
+    "github": "https://github.com/pytorch/vision",
+    "language": "python"
+}
