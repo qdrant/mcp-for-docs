@@ -307,6 +307,12 @@ def main():
 
     args = parser.parse_args()
 
+    if args.library == "all":
+        with importlib.resources.path("qdrant_docs_mcp", "libraries") as dir:
+            names = list(map(lambda p: p.stem, dir.glob("*.json")))
+    else:
+        names = [args.library]
+
     qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
     # Initialize clients
@@ -320,12 +326,13 @@ def main():
         embedding_provider.get_vector_size(),
     )
 
-    import_library(
-        name=args.library,
-        collection_name=args.collection_name,
-        qdrant_client=qdrant_client,
-        embedding_provider=embedding_provider,
-    )
+    for name in names:
+        import_library(
+            name=name,
+            collection_name=args.collection_name,
+            qdrant_client=qdrant_client,
+            embedding_provider=embedding_provider,
+        )
 
 
 if __name__ == "__main__":
