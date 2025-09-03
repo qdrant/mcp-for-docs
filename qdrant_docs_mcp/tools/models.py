@@ -86,7 +86,9 @@ def get_default_config(library: Library) -> LibraryConfig:
         language=library.language,
         url=library.github,
         src_type=SourceType.REPO,
-        version_by=VersionBy(version_type=_VersionType.VERSION, value="latest"),
+        version_by=VersionBy(
+            version_type=_VersionType.GH_RELEASE, value=library.github
+        ),
     )
 
     return LibraryConfig(description=None, sources=[source])

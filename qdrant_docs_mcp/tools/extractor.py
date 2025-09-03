@@ -36,8 +36,8 @@ def _extract_from_markdown_tree(
         if node.type == "fence":
             snippets.append(
                 PartialSnippet(
-                    category=current_heading,
-                    description=current_paragraph,
+                    category="",
+                    description=(current_heading or "") + (current_paragraph or ""),
                     snippet=node.content,
                     language=node.info,
                     source=source,
@@ -51,8 +51,8 @@ def _extract_from_markdown_tree(
         elif node.type == "code_block":
             snippets.append(
                 PartialSnippet(
-                    category=current_heading,
-                    description=current_paragraph,
+                    category="",
+                    description=(current_heading or "") + (current_paragraph or ""),
                     snippet=node.content,
                     language=None,
                     source=source,

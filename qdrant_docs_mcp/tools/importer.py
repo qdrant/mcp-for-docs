@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 
+import requests
 import rich
+import semver
 from mcp_server_qdrant.embeddings.fastembed import FastEmbedProvider
 from qdrant_client import QdrantClient, models
 from rich.progress import track
@@ -20,7 +22,9 @@ from qdrant_docs_mcp.tools.models import (
     LibraryConfig,
     PartialSnippet,
     Snippet,
+    SourceConfig,
     SourceType,
+    _VersionType,
     get_default_config,
 )
 
@@ -29,6 +33,67 @@ def _get_library_by_name(name: str) -> Library:
     data = importlib.resources.read_text("qdrant_docs_mcp", f"libraries/{name}.json")
 
     return Library.model_validate_json(data)
+
+
+def _get_latest_github_tag(url: str) -> str | None:
+    user, repo = url.split("/")[-2:]
+    r = requests.get(f"https://api.github.com/repos/{user}/{repo}/tags")
+    if not r.ok:
+        return None
+
+    data = r.json()
+    tags = sorted(
+        list(
+            filter(
+                lambda t: semver.Version.is_valid(t.strip("v")),
+                map(lambda t: t["name"], data),
+            ),
+        ),
+        key=lambda t: semver.Version.parse(t.strip("v")),
+    )
+
+    if len(tags) == 0:
+        return None
+
+    return tags[-1]
+
+
+def _get_latest_pypi_version(name: str) -> str | None:
+    r = requests.get(f"https://pypi.org/pypi/{name}/json")
+    if not r.ok:
+        return None
+
+    data = r.json()
+    return data["version"]
+
+
+def _get_github_release_tag(url: str) -> str | None:
+    user, repo = url.split("/")[-2:]
+    r = requests.get(f"https://api.github.com/repos/{user}/{repo}/releases/latest")
+    if not r.ok:
+        return None
+
+    data = r.json()
+    return data["tag_name"]
+
+
+def get_version(config: SourceConfig) -> str:
+    version = None
+
+    if config.version_by.version_type == _VersionType.VERSION:
+        return config.version_by.value
+
+    if config.version_by.version_type == _VersionType.PYPI:
+        version = _get_latest_pypi_version(config.version_by.value)
+        return version or "latest"
+
+    if config.version_by.version_type == _VersionType.GH_RELEASE:
+        version = _get_github_release_tag(config.version_by.value)
+
+    if config.version_by.version_type == _VersionType.GH_TAGS or version is None:
+        version = _get_latest_github_tag(config.version_by.value)
+
+    return version or "latest"
 
 
 @dataclass
@@ -70,11 +135,11 @@ def clone_repo(url: str, cache: bool = True) -> Generator[Path]:
 
 
 def get_library_config(library: Library, repo: Path) -> LibraryConfig:
-    raise NotImplementedError
+    return LibraryConfig.model_validate_json((repo / library.config_file).read_text())
 
 
 def extract_from_repo(
-    library: Library, config: LibraryConfig, repo: Path
+    library: Library, config: LibraryConfig, repo: Path, version: str
 ) -> list[Snippet]:
     snippets: list[PartialSnippet] = []
     for file in chain(
@@ -93,7 +158,7 @@ def extract_from_repo(
                 language=snippet.language or library.language,
                 source=str(Path(snippet.source).relative_to(repo)),
                 package_name=library.name,
-                version="",
+                version=version,
             )
         )
 
@@ -107,9 +172,10 @@ def extract_all(library: Library, config: LibraryConfig, repo: Path) -> list[Sni
         return []
 
     for source in config.sources:
+        version = get_version(source)
         if source.src_type == SourceType.REPO:
             with clone_repo(source.url) as src_repo:
-                snippets.extend(extract_from_repo(library, config, src_repo))
+                snippets.extend(extract_from_repo(library, config, src_repo, version))
         elif source.src_type == SourceType.SNIPPETS:
             raise NotImplementedError
         elif source.src_type == SourceType.WEBSITE:
