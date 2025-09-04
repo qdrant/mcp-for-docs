@@ -99,7 +99,7 @@ def extract_from_rst(file: Path) -> list[PartialSnippet]:
     if not file.is_file():
         raise ValueError
 
-    ast, _ = to_docutils_ast(file.read_text())
+    ast, _ = to_docutils_ast(file.read_text(), halt_level=5)
     tokens = MarkdownItRenderer(ast).to_tokens().tokens
     root = SyntaxTreeNode(tokens)
 
