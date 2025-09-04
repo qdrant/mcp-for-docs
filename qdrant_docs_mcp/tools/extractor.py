@@ -43,10 +43,14 @@ def _extract_from_markdown_tree(
                     source=source,
                 )
             )
-        elif node.type == "heading":
+        elif (
+            node.type == "heading"
+            and len(node.children) > 0
+            and len(node.children[0].children) > 0
+        ):
             current_heading = node.children[0].children[0].content
             current_paragraph = None
-        elif node.type == "paragraph":
+        elif node.type == "paragraph" and len(node.children) > 0:
             current_paragraph = node.children[0].content
         elif node.type == "code_block":
             snippets.append(
@@ -82,7 +86,7 @@ def extract_from_notebook(file: Path) -> list[PartialSnippet]:
     notebook = nbformat.reads(file.read_text(), as_version=4)
     exporter: MarkdownExporter = MarkdownExporter(
         optimistic_validation=True,
-        config={"ClearOutputPreprocessor": {"enabled": True}}
+        config={"ClearOutputPreprocessor": {"enabled": True}},
     )
 
     body, _ = exporter.from_notebook_node(notebook)
