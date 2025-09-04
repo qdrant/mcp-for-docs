@@ -105,7 +105,19 @@ def extract_from_rst(file: Path) -> list[PartialSnippet]:
 
     ast, _ = to_docutils_ast(file.read_text(), halt_level=5)
     tokens = MarkdownItRenderer(ast).to_tokens().tokens
-    root = SyntaxTreeNode(tokens)
+
+    # HACK: Some `dl_open` tokens end up as children of `inline` tokens, while their
+    # corresponding `dl_close` tokens aren't. That breaks tree building. Ideally this should
+    # be fixed upstream at some point.
+    filtered_tokens = []
+    for token in tokens:
+        if token.type in ("dl_open", "dl_close"):
+            continue
+        if token.children and any(t.type == "dl_open" for t in token.children):
+            continue
+        filtered_tokens.append(token)
+
+    root = SyntaxTreeNode(filtered_tokens)
 
     return _extract_from_markdown_tree(root, str(file))
 
