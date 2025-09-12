@@ -23,6 +23,20 @@ def register_extractor(filetype: str) -> Callable[[_ExtractorT], _ExtractorT]:
     return _inner
 
 
+def _format_context(heading: str | None, paragraph: str | None) -> str:
+    context = ""
+
+    if heading is not None:
+        context += f"# {heading}"
+
+    if paragraph is not None:
+        if len(context) > 0:
+            context += "\n\n"
+        context += paragraph
+
+    return context
+
+
 def _extract_from_markdown_tree(
     root: SyntaxTreeNode, source: str
 ) -> list[PartialSnippet]:
@@ -36,9 +50,8 @@ def _extract_from_markdown_tree(
         if node.type == "fence":
             snippets.append(
                 PartialSnippet(
-                    category="",
-                    description=(current_heading or "") + (current_paragraph or ""),
-                    snippet=node.content,
+                    description=_format_context(current_heading, current_paragraph),
+                    code=node.content,
                     language=node.info,
                     source=source,
                 )
@@ -47,9 +60,8 @@ def _extract_from_markdown_tree(
         elif node.type == "code_block":
             snippets.append(
                 PartialSnippet(
-                    category="",
-                    description=(current_heading or "") + (current_paragraph or ""),
-                    snippet=node.content,
+                    description=_format_context(current_heading, current_paragraph),
+                    code=node.content,
                     language=None,
                     source=source,
                 )

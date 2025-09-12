@@ -7,19 +7,16 @@ from pydantic import BaseModel
 
 
 class PartialSnippet(BaseModel):
-    category: str | None
-    description: str | None
-    snippet: str
+    description: str
+    code: str
     language: str | None
     source: str
 
 
 class Snippet(BaseModel):
-    category: str
-    sub_category: str
-    language: str
-    snippet: str
     description: str
+    code: str
+    language: str
     package_name: str
     version: str
     source: str

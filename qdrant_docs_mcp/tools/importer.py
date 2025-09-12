@@ -178,10 +178,8 @@ def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippe
 
         snips.append(
             Snippet(
-                category=snippet.category or "",
-                sub_category="",
-                description=snippet.description or "",
-                snippet=snippet.snippet,
+                description=snippet.description,
+                code=snippet.code,
                 language=snippet.language or library.language,
                 source=str(Path(snippet.source).relative_to(repo)),
                 package_name=library.name,
@@ -237,7 +235,7 @@ def upsert_snippets(
             # Combine description and snippet for embedding
             embedding = next(
                 embedding_provider.embedding_model.embed(
-                    [snippet.category + snippet.description]
+                    [snippet.description]
                 )
             ).tolist()
             vector[embedding_provider.get_vector_name()] = embedding
