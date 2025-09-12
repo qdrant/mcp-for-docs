@@ -78,6 +78,18 @@ def _get_github_release_tag(url: str) -> str | None:
 
 
 def get_version(config: SourceConfig) -> str:
+    """Get the latest version of the source.
+
+    Where the version comes from is defined in the config. If the version
+    should come from GitHub releases and no release is found, GitHub tags are
+    used as a fallback.
+
+    Args:
+        config (SourceConfig): configuration of the source
+
+    Returns:
+        str: semantic version string or "latest"
+    """
     version = None
 
     if config.version_by.version_type == _VersionType.VERSION:
@@ -106,7 +118,16 @@ __repo_cache: dict[str, __Repo] = {}
 
 
 @contextlib.contextmanager
-def clone_repo(url: str, cache: bool = True) -> Generator[Path]:
+def clone_repo(url: str) -> Generator[Path]:
+    """Context manager that clones a git repository into a temporary directory
+    and deletes it when the context is closed.
+
+    Args:
+        url (str): URL of the git repo
+
+    Returns:
+        Generator[Path]: Path to the repo directory in the filesystem
+    """
     if url in __repo_cache:
         yield __repo_cache[url].path
         return
@@ -114,17 +135,11 @@ def clone_repo(url: str, cache: bool = True) -> Generator[Path]:
     repo: __Repo | None = None
 
     try:
-        if cache:
-            repo = __Repo(path=Path(f"./cache/{url.split('/')[-1]}"))
-            if not repo.path.is_dir():
-                repo.path.mkdir(exist_ok=True, parents=True)
-                proc = subprocess.run(
-                    ["git", "clone", url, repo.path], capture_output=True
-                )
-        else:
-            dir = tempfile.TemporaryDirectory()
-            repo = __Repo(path=Path(dir.name), tmpdir=dir)
-            proc = subprocess.run(["git", "clone", url, repo.path], capture_output=True)
+        dir = tempfile.TemporaryDirectory()
+        repo = __Repo(path=Path(dir.name), tmpdir=dir)
+        proc = subprocess.run(
+            ["git", "clone", "--depth=1", url, repo.path], capture_output=True
+        )
 
         __repo_cache[url] = repo
 
@@ -141,6 +156,18 @@ def get_library_config(library: Library, repo: Path) -> LibraryConfig:
 def extract_from_repo(
     library: Library, config: LibraryConfig, repo: Path, version: str
 ) -> list[Snippet]:
+    """Extract all snippets from a repo on disk.
+
+    Args:
+        library (Library): Library the repo belongs to
+        config (LibraryConfig): Configuration belonging to the library
+        repo (Path): Path to the repo directory on disk
+        version (str): Semantic version string or "latest"
+
+    Returns:
+        list[Snippet]: List of parsed snippets
+    """
+
     snippets: list[PartialSnippet] = []
     for file in chain(
         repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb")
@@ -165,7 +192,16 @@ def extract_from_repo(
     return snips
 
 
-def extract_all(library: Library, config: LibraryConfig, repo: Path) -> list[Snippet]:
+def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
+    """Extract all snippets from all sources of a library.
+
+    Args:
+        library (Library): Library to extract from
+        config (LibraryConfig): Configuration belonging to the library
+
+    Returns:
+        list[Snippet]: List of parsed snippets
+    """
     snippets: list[Snippet] = []
 
     if config.sources is None:
@@ -192,6 +228,8 @@ def import_snippets(
     snippets: list[Snippet],
     embedding_provider: FastEmbedProvider,
 ):
+    """Upsert a list of snippets to Qdrant."""
+
     for snippet in track(snippets, description="Uploading snippets..."):
         # Combine description and snippet for embedding
         embedding = next(
@@ -224,15 +262,17 @@ def import_library(
     collection_name: str,
     embedding_provider: FastEmbedProvider,
 ):
+    """Extract all snippets from a library and upsert them into Qdrant."""
+
     library = _get_library_by_name(name)
-    rich.print(library)
+    print(f'Importing library "{library.name}"')
     with clone_repo(library.github) as repo:
         if (repo / library.config_file).is_file():
             config = get_library_config(library, repo)
         else:
             config = get_default_config(library)
 
-        snippets = extract_all(library, config, repo)
+        snippets = extract_all(library, config)
 
     import_snippets(
         qdrant_client=qdrant_client,

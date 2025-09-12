@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Callable
 
 import nbformat
-import rich
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
 from nbconvert import MarkdownExporter
@@ -11,14 +10,14 @@ from rst_to_myst.parser import to_docutils_ast
 
 from qdrant_docs_mcp.tools.models import PartialSnippet
 
-__ExtractorT = Callable[[Path], list[PartialSnippet]]
+_ExtractorT = Callable[[Path], list[PartialSnippet]]
 
-__extractor_by_filetype: dict[str, __ExtractorT] = {}
+_extractor_by_filetype: dict[str, _ExtractorT] = {}
 
 
-def register_extractor(filetype: str) -> Callable[[__ExtractorT], __ExtractorT]:
-    def _inner(callable: __ExtractorT) -> __ExtractorT:
-        __extractor_by_filetype[filetype] = callable
+def register_extractor(filetype: str) -> Callable[[_ExtractorT], _ExtractorT]:
+    def _inner(callable: _ExtractorT) -> _ExtractorT:
+        _extractor_by_filetype[filetype] = callable
         return callable
 
     return _inner
@@ -33,6 +32,7 @@ def _extract_from_markdown_tree(
     current_paragraph: str | None = None
 
     for node in root.children:
+        # Code fence, optionally with language info
         if node.type == "fence":
             snippets.append(
                 PartialSnippet(
@@ -43,15 +43,7 @@ def _extract_from_markdown_tree(
                     source=source,
                 )
             )
-        elif (
-            node.type == "heading"
-            and len(node.children) > 0
-            and len(node.children[0].children) > 0
-        ):
-            current_heading = node.children[0].children[0].content
-            current_paragraph = None
-        elif node.type == "paragraph" and len(node.children) > 0:
-            current_paragraph = node.children[0].content
+        # Indented code block
         elif node.type == "code_block":
             snippets.append(
                 PartialSnippet(
@@ -62,14 +54,33 @@ def _extract_from_markdown_tree(
                     source=source,
                 )
             )
+        # Keep track of most recent heading for context
+        elif (
+            node.type == "heading"
+            and len(node.children) > 0
+            and len(node.children[0].children) > 0
+        ):
+            current_heading = node.children[0].children[0].content
+            current_paragraph = None
+        # Keep track of most recent paragraph for context
+        elif node.type == "paragraph" and len(node.children) > 0:
+            current_paragraph = node.children[0].content
 
     return snippets
 
 
 @register_extractor("md")
 def extract_from_markdown(file: Path) -> list[PartialSnippet]:
+    """Extract code snippets from .md files
+
+    Args:
+        file (Path): md file
+
+    Returns:
+        list[PartialSnippet]: list of snippets with some library information missing
+    """
     if not file.is_file():
-        raise ValueError
+        raise ValueError(f"{file} is not a file")
 
     md = MarkdownIt("commonmark")
     tokens = md.parse(file.read_text())
@@ -80,8 +91,19 @@ def extract_from_markdown(file: Path) -> list[PartialSnippet]:
 
 @register_extractor("ipynb")
 def extract_from_notebook(file: Path) -> list[PartialSnippet]:
+    """Extract code snippets from .ipynb files
+
+    Internally, the file is converted to markdown and parsed then. Currently,
+    outputs are dropped because PyCharm breaks output in ipynb files.
+
+    Args:
+        file (Path): ipynb file
+
+    Returns:
+        list[PartialSnippet]: list of snippets with some library information missing
+    """
     if not file.is_file():
-        raise ValueError
+        raise ValueError(f"{file} is not a file")
 
     notebook = nbformat.reads(file.read_text(), as_version=4)
     exporter: MarkdownExporter = MarkdownExporter(
@@ -100,8 +122,18 @@ def extract_from_notebook(file: Path) -> list[PartialSnippet]:
 
 @register_extractor("rst")
 def extract_from_rst(file: Path) -> list[PartialSnippet]:
+    """Extract code snippets from .rst files
+
+    Internally, the file is converted to markdown and parsed then.
+
+    Args:
+        file (Path): rst file
+
+    Returns:
+        list[PartialSnippet]: list of snippets with some library information missing
+    """
     if not file.is_file():
-        raise ValueError
+        raise ValueError(f"{file} is not a file")
 
     ast, _ = to_docutils_ast(file.read_text(), halt_level=5)
     tokens = MarkdownItRenderer(ast).to_tokens().tokens
@@ -126,7 +158,7 @@ def extract(file: Path, filetype: str | None = None) -> list[PartialSnippet]:
     if filetype is None:
         filetype = file.suffix.strip(".")
 
-    if filetype not in __extractor_by_filetype:
+    if filetype not in _extractor_by_filetype:
         raise NotImplementedError(f'Filetype "{filetype}" is not known.')
 
-    return __extractor_by_filetype[filetype](file)
+    return _extractor_by_filetype[filetype](file)
