@@ -38,13 +38,6 @@ class Snippet(BaseModel):
         return str(uuid.UUID(bytes=content_hash[:16]))
 
 
-class Library(BaseModel):
-    name: str
-    github: str
-    language: str
-    config_file: str = ".mcp-for-docs.json"
-
-
 class VersionType(str, Enum):
     GH_TAGS = "github_tags"
     GH_RELEASE = "github_release"
@@ -75,6 +68,13 @@ class SourceConfig(BaseModel):
 class LibraryConfig(BaseModel):
     description: str | None
     sources: list[SourceConfig] | None
+
+
+class Library(BaseModel):
+    name: str
+    github: str
+    language: str
+    config_file: str | LibraryConfig = ".mcp-for-docs.json"
 
 
 def get_default_config(library: Library) -> LibraryConfig:

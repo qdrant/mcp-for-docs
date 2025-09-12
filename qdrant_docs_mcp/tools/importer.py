@@ -3,6 +3,7 @@ import contextlib
 import os
 import subprocess
 import tempfile
+import warnings
 from collections.abc import Generator
 from dataclasses import dataclass
 from itertools import chain
@@ -150,7 +151,15 @@ def clone_repo(url: str) -> Generator[Path]:
 
 
 def get_library_config(library: Library, repo: Path) -> LibraryConfig:
-    return LibraryConfig.model_validate_json((repo / library.config_file).read_text())
+    if isinstance(library.config_file, LibraryConfig):
+        return library.config_file
+
+    if (repo / library.config_file).is_file():
+        return LibraryConfig.model_validate_json(
+            (repo / library.config_file).read_text()
+        )
+
+    return get_default_config(library)
 
 
 def extract_from_repo(
@@ -207,6 +216,71 @@ def extract_from_repo(
     return snips
 
 
+def extract_from_snipdir(
+    library: Library,
+    source: SourceConfig,
+    repo: Path,
+    version: str,
+) -> list[Snippet]:
+    """Extract all snippets from a snippet directory.
+
+    Args:
+        library (Library): Library the repo belongs to
+        source (SourceConfig: Cofiguration belonging to the source
+        repo (Path): Path to the repo directory on disk
+        version (str): Semantic version string or "latest"
+
+    Returns:
+        list[Snippet]: List of parsed snippets
+    """
+    snippets: list[Snippet] = []
+
+    paths = list(repo.glob("**/_description.md"))
+
+    if source.include_files is not None:
+        filtered_paths: set[Path] = set()
+        for pattern in source.include_files:
+            filtered_paths |= {
+                path for path in paths if path.full_match(repo / pattern)
+            }
+
+        paths = filtered_paths
+
+    # Iterate through snippet (sub-)category dirs
+    for description_path in paths:
+        description = description_path.read_text()
+
+        # Process each language file
+        for snippet_file in description_path.parent.iterdir():
+            if not snippet_file.is_file():
+                warnings.warn(f"Found non-file in snippets directory: {snippet_file}")
+                continue
+
+            if snippet_file.name == "_description.md":
+                continue
+
+            language = snippet_file.stem
+
+            # Skip if language filter is specified and doesn't match
+            if language != library.language:
+                continue
+
+            snippet = snippet_file.read_text()
+
+            snippets.append(
+                Snippet(
+                    description=description,
+                    code=snippet,
+                    language=library.language,
+                    package_name=library.name,
+                    version=version,
+                    source=str(Path(snippet_file).relative_to(repo)),
+                )
+            )
+
+    return snippets
+
+
 def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
     """Extract all snippets from all sources of a library.
 
@@ -228,7 +302,10 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
             with clone_repo(source.url) as src_repo:
                 snippets.extend(extract_from_repo(library, source, src_repo, version))
         elif source.src_type == SourceType.SNIPPETS:
-            raise NotImplementedError("Snippet directory source not yet supported.")
+            with clone_repo(source.url) as src_repo:
+                snippets.extend(
+                    extract_from_snipdir(library, source, src_repo, version)
+                )
         elif source.src_type == SourceType.WEBSITE:
             raise NotImplementedError("HTML website source not yet supported.")
         else:
@@ -284,11 +361,7 @@ def import_library(
     library = _get_library_by_name(name)
     print(f'Importing library "{library.name}"')
     with clone_repo(library.github) as repo:
-        if (repo / library.config_file).is_file():
-            config = get_library_config(library, repo)
-        else:
-            config = get_default_config(library)
-
+        config = get_library_config(library, repo)
         snippets = extract_all(library, config)
 
     upsert_snippets(
