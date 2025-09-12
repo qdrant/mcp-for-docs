@@ -153,11 +153,17 @@ def get_library_config(library: Library, repo: Path) -> LibraryConfig:
     return LibraryConfig.model_validate_json((repo / library.config_file).read_text())
 
 
-def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippet]:
+def extract_from_repo(
+    library: Library,
+    source: SourceConfig,
+    repo: Path,
+    version: str,
+) -> list[Snippet]:
     """Extract all snippets from a repo on disk.
 
     Args:
         library (Library): Library the repo belongs to
+        source (SourceConfig: Cofiguration belonging to the source
         repo (Path): Path to the repo directory on disk
         version (str): Semantic version string or "latest"
 
@@ -166,9 +172,20 @@ def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippe
     """
 
     snippets: list[PartialSnippet] = []
-    for file in chain(
-        repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb")
-    ):
+    paths = list(
+        chain(repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb"))
+    )
+
+    if source.include_files is not None:
+        filtered_paths: set[Path] = set()
+        for pattern in source.include_files:
+            filtered_paths |= {
+                path for path in paths if path.full_match(repo / pattern)
+            }
+
+        paths = filtered_paths
+
+    for file in paths:
         snippets.extend(extract(file))
 
     snips: list[Snippet] = []
@@ -209,7 +226,7 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
         version = get_version(source)
         if source.src_type == SourceType.REPO:
             with clone_repo(source.url) as src_repo:
-                snippets.extend(extract_from_repo(library, src_repo, version))
+                snippets.extend(extract_from_repo(library, source, src_repo, version))
         elif source.src_type == SourceType.SNIPPETS:
             raise NotImplementedError("Snippet directory source not yet supported.")
         elif source.src_type == SourceType.WEBSITE:
