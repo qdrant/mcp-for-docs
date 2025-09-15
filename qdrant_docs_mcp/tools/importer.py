@@ -29,11 +29,14 @@ from qdrant_docs_mcp.tools.models import (
 
 
 def _get_library_by_name(name: str) -> Library:
-    data = (
-        importlib.resources.files("qdrant_docs_mcp")
-        .joinpath(f"libraries/{name}.json")
-        .read_text()
-    )
+    try:
+        data = (
+            importlib.resources.files("qdrant_docs_mcp")
+            .joinpath(f"libraries/{name}.json")
+            .read_text()
+        )
+    except FileNotFoundError:
+        raise FileNotFoundError(f"No configuration found for library \"{name}\"")
 
     return Library.model_validate_json(data)
 
