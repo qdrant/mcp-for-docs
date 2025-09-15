@@ -10,7 +10,6 @@ from itertools import chain
 from pathlib import Path
 
 import requests
-import rich
 import semver
 from mcp_server_qdrant.embeddings.fastembed import FastEmbedProvider
 from qdrant_client import QdrantClient, models
@@ -30,7 +29,11 @@ from qdrant_docs_mcp.tools.models import (
 
 
 def _get_library_by_name(name: str) -> Library:
-    data = importlib.resources.read_text("qdrant_docs_mcp", f"libraries/{name}.json")
+    data = (
+        importlib.resources.files("qdrant_docs_mcp")
+        .joinpath(f"libraries/{name}.json")
+        .read_text()
+    )
 
     return Library.model_validate_json(data)
 
