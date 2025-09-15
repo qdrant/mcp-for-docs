@@ -16,9 +16,9 @@ _extractor_by_filetype: dict[str, _ExtractorT] = {}
 
 
 def register_extractor(filetype: str) -> Callable[[_ExtractorT], _ExtractorT]:
-    def _inner(callable: _ExtractorT) -> _ExtractorT:
-        _extractor_by_filetype[filetype] = callable
-        return callable
+    def _inner(extractor_fn: _ExtractorT) -> _ExtractorT:
+        _extractor_by_filetype[filetype] = extractor_fn
+        return extractor_fn
 
     return _inner
 

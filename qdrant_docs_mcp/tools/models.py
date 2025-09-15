@@ -48,7 +48,7 @@ class Library(BaseModel):
     config_file: str = ".mcp-for-docs.json"
 
 
-class _VersionType(str, Enum):
+class VersionType(str, Enum):
     GH_TAGS = "github_tags"
     GH_RELEASE = "github_release"
     PYPI = "pypi"
@@ -56,7 +56,7 @@ class _VersionType(str, Enum):
 
 
 class VersionBy(BaseModel):
-    version_type: _VersionType
+    version_type: VersionType
     value: str
 
 
@@ -87,7 +87,7 @@ def get_default_config(library: Library) -> LibraryConfig:
         url=library.github,
         src_type=SourceType.REPO,
         version_by=VersionBy(
-            version_type=_VersionType.GH_RELEASE, value=library.github
+            version_type=VersionType.GH_RELEASE, value=library.github
         ),
     )
 

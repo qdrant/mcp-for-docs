@@ -23,7 +23,7 @@ from qdrant_docs_mcp.tools.models import (
     Snippet,
     SourceConfig,
     SourceType,
-    _VersionType,
+    VersionType,
     get_default_config,
 )
 
@@ -45,20 +45,16 @@ def _get_latest_github_tag(url: str) -> str | None:
         return None
 
     data = r.json()
-    tags = sorted(
-        list(
-            filter(
-                lambda t: semver.Version.is_valid(t.strip("v")),
-                map(lambda t: t["name"], data),
-            ),
-        ),
+    tag_names = [t["name"] for t in data]
+    valid_tag_names = sorted(
+        [t for t in tag_names if semver.Version.is_valid(t.strip("v"))],
         key=lambda t: semver.Version.parse(t.strip("v")),
     )
 
-    if len(tags) == 0:
+    if len(valid_tag_names) == 0:
         return None
 
-    return tags[-1]
+    return valid_tag_names[-1]
 
 
 def _get_latest_pypi_version(name: str) -> str | None:
@@ -95,29 +91,29 @@ def get_version(config: SourceConfig) -> str:
     """
     version = None
 
-    if config.version_by.version_type == _VersionType.VERSION:
+    if config.version_by.version_type == VersionType.VERSION:
         return config.version_by.value
 
-    if config.version_by.version_type == _VersionType.PYPI:
+    if config.version_by.version_type == VersionType.PYPI:
         version = _get_latest_pypi_version(config.version_by.value)
         return version or "latest"
 
-    if config.version_by.version_type == _VersionType.GH_RELEASE:
+    if config.version_by.version_type == VersionType.GH_RELEASE:
         version = _get_github_release_tag(config.version_by.value)
 
-    if config.version_by.version_type == _VersionType.GH_TAGS or version is None:
+    if config.version_by.version_type == VersionType.GH_TAGS or version is None:
         version = _get_latest_github_tag(config.version_by.value)
 
     return version or "latest"
 
 
 @dataclass
-class __Repo:
+class _Repo:
     path: Path
     tmpdir: tempfile.TemporaryDirectory[str] | None = None
 
 
-__repo_cache: dict[str, __Repo] = {}
+_repo_cache: dict[str, _Repo] = {}
 
 
 @contextlib.contextmanager
@@ -131,20 +127,20 @@ def clone_repo(url: str) -> Generator[Path]:
     Returns:
         Generator[Path]: Path to the repo directory in the filesystem
     """
-    if url in __repo_cache:
-        yield __repo_cache[url].path
+    if url in _repo_cache:
+        yield _repo_cache[url].path
         return
 
-    repo: __Repo | None = None
+    repo: _Repo | None = None
 
     try:
-        dir = tempfile.TemporaryDirectory()
-        repo = __Repo(path=Path(dir.name), tmpdir=dir)
-        proc = subprocess.run(
+        repo_dir = tempfile.TemporaryDirectory()
+        repo = _Repo(path=Path(repo_dir.name), tmpdir=repo_dir)
+        subprocess.run(
             ["git", "clone", "--depth=1", url, repo.path], capture_output=True
         )
 
-        __repo_cache[url] = repo
+        _repo_cache[url] = repo
 
         yield repo.path
     finally:
@@ -156,14 +152,11 @@ def get_library_config(library: Library, repo: Path) -> LibraryConfig:
     return LibraryConfig.model_validate_json((repo / library.config_file).read_text())
 
 
-def extract_from_repo(
-    library: Library, config: LibraryConfig, repo: Path, version: str
-) -> list[Snippet]:
+def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippet]:
     """Extract all snippets from a repo on disk.
 
     Args:
         library (Library): Library the repo belongs to
-        config (LibraryConfig): Configuration belonging to the library
         repo (Path): Path to the repo directory on disk
         version (str): Semantic version string or "latest"
 
@@ -214,7 +207,7 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
         version = get_version(source)
         if source.src_type == SourceType.REPO:
             with clone_repo(source.url) as src_repo:
-                snippets.extend(extract_from_repo(library, config, src_repo, version))
+                snippets.extend(extract_from_repo(library, src_repo, version))
         elif source.src_type == SourceType.SNIPPETS:
             raise NotImplementedError
         elif source.src_type == SourceType.WEBSITE:
@@ -226,7 +219,7 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
 
 
 def import_snippets(
-    qdrant_client: QdrantClient,
+    client: QdrantClient,
     collection_name: str,
     snippets: list[Snippet],
     embedding_provider: FastEmbedProvider,
@@ -242,7 +235,7 @@ def import_snippets(
         ).tolist()
 
         # Upload to Qdrant
-        qdrant_client.upsert(
+        client.upsert(
             collection_name=collection_name,
             points=[
                 models.PointStruct(
@@ -261,7 +254,7 @@ def import_snippets(
 
 def import_library(
     name: str,
-    qdrant_client: QdrantClient,
+    client: QdrantClient,
     collection_name: str,
     embedding_provider: FastEmbedProvider,
 ):
@@ -278,7 +271,7 @@ def import_library(
         snippets = extract_all(library, config)
 
     import_snippets(
-        qdrant_client=qdrant_client,
+        client=client,
         collection_name=collection_name,
         snippets=snippets,
         embedding_provider=embedding_provider,
@@ -286,13 +279,13 @@ def import_library(
 
 
 def ensure_collection(
-    qdrant_client: QdrantClient,
+    client: QdrantClient,
     collection_name: str,
     vector_name: str,
     vector_size: int,
 ):
-    if not qdrant_client.collection_exists(collection_name):
-        qdrant_client.create_collection(
+    if not client.collection_exists(collection_name):
+        client.create_collection(
             collection_name=collection_name,
             vectors_config={
                 vector_name: models.VectorParams(
@@ -306,14 +299,14 @@ def ensure_collection(
         )
 
         # Create payload index for package_name and versions
-        qdrant_client.create_payload_index(
+        client.create_payload_index(
             collection_name=collection_name,
             field_name="metadata.package_name",
             field_schema=models.PayloadSchemaType.KEYWORD,
         )
 
         # Create payload index for package_name, language and versions
-        qdrant_client.create_payload_index(
+        client.create_payload_index(
             collection_name=collection_name,
             field_name="metadata.language",
             field_schema=models.PayloadSchemaType.KEYWORD,
@@ -360,10 +353,10 @@ def main():
 
     # Initialize clients
     embedding_provider = FastEmbedProvider(model_name=args.model_name)
-    qdrant_client = QdrantClient(url=args.qdrant_url, api_key=qdrant_api_key)
+    client = QdrantClient(url=args.qdrant_url, api_key=qdrant_api_key)
 
     ensure_collection(
-        qdrant_client,
+        client,
         args.collection_name,
         embedding_provider.get_vector_name(),
         embedding_provider.get_vector_size(),
@@ -373,7 +366,7 @@ def main():
         import_library(
             name=name,
             collection_name=args.collection_name,
-            qdrant_client=qdrant_client,
+            client=client,
             embedding_provider=embedding_provider,
         )
 
