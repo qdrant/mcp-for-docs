@@ -911,8 +911,16 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
-    { name = "markdown-it-py" },
     { name = "mcp-server-qdrant" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ipython", version = "8.37.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "ipython", version = "9.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+import = [
+    { name = "markdown-it-py" },
     { name = "nbconvert" },
     { name = "pydantic" },
     { name = "requests" },
@@ -922,17 +930,16 @@ dependencies = [
     { name = "sphinx" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "ipython", version = "8.37.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "ipython", version = "9.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", specifier = ">=2.9.0" },
-    { name = "markdown-it-py", specifier = "<3.dev0" },
     { name = "mcp-server-qdrant", git = "https://github.com/qdrant/mcp-server-qdrant.git?branch=master" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ipython", specifier = ">=8.37.0" }]
+import = [
+    { name = "markdown-it-py", specifier = "<3.dev0" },
     { name = "nbconvert", specifier = ">=7.16.6" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "requests", specifier = ">=2.32.4" },
@@ -941,9 +948,6 @@ requires-dist = [
     { name = "semver", specifier = ">=3.0.4" },
     { name = "sphinx", specifier = ">=7.3.7" },
 ]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ipython", specifier = ">=8.37.0" }]
 
 [[package]]
 name = "mcp-server-qdrant"

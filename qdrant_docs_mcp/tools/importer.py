@@ -1,6 +1,5 @@
 import argparse
 import contextlib
-import importlib.resources
 import os
 import subprocess
 import tempfile
@@ -15,6 +14,7 @@ from mcp_server_qdrant.embeddings.fastembed import FastEmbedProvider
 from qdrant_client import QdrantClient, models
 from rich.progress import track
 
+from qdrant_docs_mcp import LIBRARIES_ROOT
 from qdrant_docs_mcp.tools.extractor import extract
 from qdrant_docs_mcp.tools.models import (
     Library,
@@ -29,14 +29,12 @@ from qdrant_docs_mcp.tools.models import (
 
 
 def _get_library_by_name(name: str) -> Library:
-    try:
-        data = (
-            importlib.resources.files("qdrant_docs_mcp")
-            .joinpath(f"libraries/{name}.json")
-            .read_text()
-        )
-    except FileNotFoundError:
-        raise FileNotFoundError(f"No configuration found for library \"{name}\"")
+    config_file = LIBRARIES_ROOT / f"{name}.json"
+
+    if not config_file.is_file():
+        raise FileNotFoundError(f'No configuration found for library "{name}"')
+
+    data = config_file.read_text()
 
     return Library.model_validate_json(data)
 
@@ -347,8 +345,7 @@ def main():
     args = parser.parse_args()
 
     if args.library == "all":
-        with importlib.resources.path("qdrant_docs_mcp", "libraries") as dir:
-            names = list(map(lambda p: p.stem, dir.glob("*.json")))
+        names = list(map(lambda p: p.stem, LIBRARIES_ROOT.glob("*.json")))
     else:
         names = [args.library]
 
