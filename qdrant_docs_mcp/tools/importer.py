@@ -231,12 +231,16 @@ def import_snippets(
     """Upsert a list of snippets to Qdrant."""
 
     for snippet in track(snippets, description="Uploading snippets..."):
-        # Combine description and snippet for embedding
-        embedding = next(
-            embedding_provider.embedding_model.embed(
-                [snippet.category + snippet.description]
-            )
-        ).tolist()
+        vector = {}
+
+        if snippet.description != "":
+            # Combine description and snippet for embedding
+            embedding = next(
+                embedding_provider.embedding_model.embed(
+                    [snippet.category + snippet.description]
+                )
+            ).tolist()
+            vector[embedding_provider.get_vector_name()] = embedding
 
         # Upload to Qdrant
         client.upsert(
@@ -244,9 +248,7 @@ def import_snippets(
             points=[
                 models.PointStruct(
                     id=snippet.uuid,
-                    vector={
-                        embedding_provider.get_vector_name(): embedding,
-                    },
+                    vector=vector,
                     payload={
                         "document": snippet.document,
                         "metadata": snippet.metadata,
