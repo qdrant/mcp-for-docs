@@ -213,11 +213,11 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
             with clone_repo(source.url) as src_repo:
                 snippets.extend(extract_from_repo(library, src_repo, version))
         elif source.src_type == SourceType.SNIPPETS:
-            raise NotImplementedError
+            raise NotImplementedError("Snippet directory source not yet supported.")
         elif source.src_type == SourceType.WEBSITE:
-            raise NotImplementedError
+            raise NotImplementedError("HTML website source not yet supported.")
         else:
-            raise ValueError
+            raise ValueError(f"Unknown source type {source.src_type}")
 
     return snippets
 
