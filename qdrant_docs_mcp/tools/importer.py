@@ -173,6 +173,9 @@ def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippe
 
     snips: list[Snippet] = []
     for snippet in snippets:
+        if snippet.language is not None and snippet.language != library.language:
+            continue
+
         snips.append(
             Snippet(
                 category=snippet.category or "",
