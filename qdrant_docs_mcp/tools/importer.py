@@ -152,6 +152,10 @@ def clone_repo(url: str) -> Generator[Path]:
 
 def get_library_config(library: Library, repo: Path) -> LibraryConfig:
     if isinstance(library.config_file, LibraryConfig):
+        warnings.warn(
+            category=DeprecationWarning,
+            message="LibraryConfig should be loaded from the library repository. Directly configuring libraries in this way will be removed soon.",
+        )
         return library.config_file
 
     if (repo / library.config_file).is_file():
@@ -328,9 +332,7 @@ def upsert_snippets(
         if snippet.description != "":
             # Combine description and snippet for embedding
             embedding = next(
-                embedding_provider.embedding_model.embed(
-                    [snippet.description]
-                )
+                embedding_provider.embedding_model.embed([snippet.description])
             ).tolist()
             vector[embedding_provider.get_vector_name()] = embedding
 
