@@ -7,19 +7,16 @@ from pydantic import BaseModel
 
 
 class PartialSnippet(BaseModel):
-    category: str | None
-    description: str | None
-    snippet: str
+    description: str
+    code: str
     language: str | None
     source: str
 
 
 class Snippet(BaseModel):
-    category: str
-    sub_category: str
-    language: str
-    snippet: str
     description: str
+    code: str
+    language: str
     package_name: str
     version: str
     source: str
@@ -39,13 +36,6 @@ class Snippet(BaseModel):
         content_hash = hashlib.sha256(content.encode("utf-8")).digest()
         # Use the first 16 bytes of the hash to create a UUID
         return str(uuid.UUID(bytes=content_hash[:16]))
-
-
-class Library(BaseModel):
-    name: str
-    github: str
-    language: str
-    config_file: str = ".mcp-for-docs.json"
 
 
 class VersionType(str, Enum):
@@ -78,6 +68,13 @@ class SourceConfig(BaseModel):
 class LibraryConfig(BaseModel):
     description: str | None
     sources: list[SourceConfig] | None
+
+
+class Library(BaseModel):
+    name: str
+    github: str
+    language: str
+    config_file: str | LibraryConfig = ".mcp-for-docs.json"
 
 
 def get_default_config(library: Library) -> LibraryConfig:

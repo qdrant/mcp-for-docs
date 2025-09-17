@@ -3,6 +3,7 @@ import contextlib
 import os
 import subprocess
 import tempfile
+import warnings
 from collections.abc import Generator
 from dataclasses import dataclass
 from itertools import chain
@@ -150,14 +151,32 @@ def clone_repo(url: str) -> Generator[Path]:
 
 
 def get_library_config(library: Library, repo: Path) -> LibraryConfig:
-    return LibraryConfig.model_validate_json((repo / library.config_file).read_text())
+    if isinstance(library.config_file, LibraryConfig):
+        warnings.warn(
+            category=DeprecationWarning,
+            message="LibraryConfig should be loaded from the library repository. Directly configuring libraries in this way will be removed soon.",
+        )
+        return library.config_file
+
+    if (repo / library.config_file).is_file():
+        return LibraryConfig.model_validate_json(
+            (repo / library.config_file).read_text()
+        )
+
+    return get_default_config(library)
 
 
-def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippet]:
+def extract_from_repo(
+    library: Library,
+    source: SourceConfig,
+    repo: Path,
+    version: str,
+) -> list[Snippet]:
     """Extract all snippets from a repo on disk.
 
     Args:
         library (Library): Library the repo belongs to
+        source (SourceConfig: Cofiguration belonging to the source
         repo (Path): Path to the repo directory on disk
         version (str): Semantic version string or "latest"
 
@@ -166,9 +185,25 @@ def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippe
     """
 
     snippets: list[PartialSnippet] = []
-    for file in chain(
-        repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb")
-    ):
+
+    if source.include_files is not None:
+        filtered_paths: set[Path] = set()
+        for pattern in source.include_files:
+            filtered_paths |= {
+                path
+                for path in repo.glob(pattern)
+                if path.full_match("**/*.md")
+                or path.full_match("**/*.rst")
+                or path.full_match("**/*.ipynb")
+            }
+
+        paths = filtered_paths
+    else:
+        paths = list(
+            chain(repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb"))
+        )
+
+    for file in paths:
         snippets.extend(extract(file))
 
     snips: list[Snippet] = []
@@ -178,10 +213,8 @@ def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippe
 
         snips.append(
             Snippet(
-                category=snippet.category or "",
-                sub_category="",
-                description=snippet.description or "",
-                snippet=snippet.snippet,
+                description=snippet.description,
+                code=snippet.code,
                 language=snippet.language or library.language,
                 source=str(Path(snippet.source).relative_to(repo)),
                 package_name=library.name,
@@ -190,6 +223,72 @@ def extract_from_repo(library: Library, repo: Path, version: str) -> list[Snippe
         )
 
     return snips
+
+
+def extract_from_snipdir(
+    library: Library,
+    source: SourceConfig,
+    repo: Path,
+    version: str,
+) -> list[Snippet]:
+    """Extract all snippets from a snippet directory.
+
+    Args:
+        library (Library): Library the repo belongs to
+        source (SourceConfig: Cofiguration belonging to the source
+        repo (Path): Path to the repo directory on disk
+        version (str): Semantic version string or "latest"
+
+    Returns:
+        list[Snippet]: List of parsed snippets
+    """
+    snippets: list[Snippet] = []
+
+    if source.include_files is not None:
+        filtered_paths: set[Path] = set()
+        for pattern in source.include_files:
+            filtered_paths |= {
+                path for path in repo.glob(pattern) if path.full_match("**/_description.md")
+            }
+
+        paths = filtered_paths
+    else:
+        paths = list(repo.glob("**/_description.md"))
+
+
+    # Iterate through snippet (sub-)category dirs
+    for description_path in paths:
+        description = description_path.read_text()
+
+        # Process each language file
+        for snippet_file in description_path.parent.iterdir():
+            if not snippet_file.is_file():
+                warnings.warn(f"Found non-file in snippets directory: {snippet_file}")
+                continue
+
+            if snippet_file.name == "_description.md":
+                continue
+
+            language = snippet_file.stem
+
+            # Skip if language filter is specified and doesn't match
+            if language != library.language:
+                continue
+
+            snippet = snippet_file.read_text()
+
+            snippets.append(
+                Snippet(
+                    description=description,
+                    code=snippet,
+                    language=library.language,
+                    package_name=library.name,
+                    version=version,
+                    source=str(Path(snippet_file).relative_to(repo)),
+                )
+            )
+
+    return snippets
 
 
 def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
@@ -211,9 +310,12 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
         version = get_version(source)
         if source.src_type == SourceType.REPO:
             with clone_repo(source.url) as src_repo:
-                snippets.extend(extract_from_repo(library, src_repo, version))
+                snippets.extend(extract_from_repo(library, source, src_repo, version))
         elif source.src_type == SourceType.SNIPPETS:
-            raise NotImplementedError("Snippet directory source not yet supported.")
+            with clone_repo(source.url) as src_repo:
+                snippets.extend(
+                    extract_from_snipdir(library, source, src_repo, version)
+                )
         elif source.src_type == SourceType.WEBSITE:
             raise NotImplementedError("HTML website source not yet supported.")
         else:
@@ -236,9 +338,7 @@ def upsert_snippets(
         if snippet.description != "":
             # Combine description and snippet for embedding
             embedding = next(
-                embedding_provider.embedding_model.embed(
-                    [snippet.category + snippet.description]
-                )
+                embedding_provider.embedding_model.embed([snippet.description])
             ).tolist()
             vector[embedding_provider.get_vector_name()] = embedding
 
@@ -269,11 +369,7 @@ def import_library(
     library = _get_library_by_name(name)
     print(f'Importing library "{library.name}"')
     with clone_repo(library.github) as repo:
-        if (repo / library.config_file).is_file():
-            config = get_library_config(library, repo)
-        else:
-            config = get_default_config(library)
-
+        config = get_library_config(library, repo)
         snippets = extract_all(library, config)
 
     upsert_snippets(
