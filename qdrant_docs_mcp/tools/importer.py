@@ -185,18 +185,23 @@ def extract_from_repo(
     """
 
     snippets: list[PartialSnippet] = []
-    paths = list(
-        chain(repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb"))
-    )
 
     if source.include_files is not None:
         filtered_paths: set[Path] = set()
         for pattern in source.include_files:
             filtered_paths |= {
-                path for path in paths if path.full_match(repo / pattern)
+                path
+                for path in repo.glob(pattern)
+                if path.full_match("**/*.md")
+                or path.full_match("**/*.rst")
+                or path.full_match("**/*.ipynb")
             }
 
         paths = filtered_paths
+    else:
+        paths = list(
+            chain(repo.glob("**/*.md"), repo.glob("**/*.rst"), repo.glob("**/*.ipynb"))
+        )
 
     for file in paths:
         snippets.extend(extract(file))
@@ -239,16 +244,17 @@ def extract_from_snipdir(
     """
     snippets: list[Snippet] = []
 
-    paths = list(repo.glob("**/_description.md"))
-
     if source.include_files is not None:
         filtered_paths: set[Path] = set()
         for pattern in source.include_files:
             filtered_paths |= {
-                path for path in paths if path.full_match(repo / pattern)
+                path for path in repo.glob(pattern) if path.full_match("**/_description.md")
             }
 
         paths = filtered_paths
+    else:
+        paths = list(repo.glob("**/_description.md"))
+
 
     # Iterate through snippet (sub-)category dirs
     for description_path in paths:
