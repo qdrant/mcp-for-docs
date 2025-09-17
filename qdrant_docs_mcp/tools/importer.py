@@ -88,7 +88,7 @@ def get_version(config: SourceConfig) -> str:
         config (SourceConfig): configuration of the source
 
     Returns:
-        str: semantic version string or "latest"
+        str: semantic version string or "unknown"
     """
     version = None
 
@@ -97,7 +97,7 @@ def get_version(config: SourceConfig) -> str:
 
     if config.version_by.version_type == VersionType.PYPI:
         version = _get_latest_pypi_version(config.version_by.value)
-        return version or "latest"
+        return version or "unknown"
 
     if config.version_by.version_type == VersionType.GH_RELEASE:
         version = _get_github_release_tag(config.version_by.value)
@@ -105,7 +105,7 @@ def get_version(config: SourceConfig) -> str:
     if config.version_by.version_type == VersionType.GH_TAGS or version is None:
         version = _get_latest_github_tag(config.version_by.value)
 
-    return version or "latest"
+    return version or "unknown"
 
 
 @dataclass
