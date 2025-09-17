@@ -222,7 +222,7 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
     return snippets
 
 
-def import_snippets(
+def upsert_snippets(
     client: QdrantClient,
     collection_name: str,
     snippets: list[Snippet],
@@ -276,7 +276,7 @@ def import_library(
 
         snippets = extract_all(library, config)
 
-    import_snippets(
+    upsert_snippets(
         client=client,
         collection_name=collection_name,
         snippets=snippets,
