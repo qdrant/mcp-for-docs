@@ -24,7 +24,7 @@ class DocsMCPServer(QdrantMCPServer):
         
         Example Snippet:
 
-        {entry.metadata["snippet"]}
+        {entry.metadata["code"]}
         
         ---------------------------------
         """
