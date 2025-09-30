@@ -1,4 +1,6 @@
+import shutil
 from pathlib import Path
+import subprocess
 from typing import Callable
 
 import nbformat
@@ -164,6 +166,42 @@ def extract_from_rst(file: Path) -> list[PartialSnippet]:
     root = SyntaxTreeNode(filtered_tokens)
 
     return _extract_from_markdown_tree(root, str(file))
+
+
+@register_extractor("html")
+def extract_from_html(file: Path | str) -> list[PartialSnippet]:
+    """Extract code snippets from .html files
+
+    Internally, the file is converted to markdown and parsed then.
+
+    Args:
+        file (Path | str): html file or URL to one
+
+    Returns:
+        list[PartialSnippet]: list of snippets with some library information missing
+    """
+
+    if isinstance(file, Path) and not file.is_file():
+        raise ValueError(f"{file} is not a file or URL")
+
+    if shutil.which("pandoc") is None:
+        raise RuntimeError("Pandoc is required for HTML extraction and cannot be found.")
+
+    proc = subprocess.run(
+        ["pandoc", file, "-f", "html", "-t", "gfm-raw_html", "-o", "-"],
+        capture_output=True,
+    )
+    md = MarkdownIt("commonmark")
+    tokens = md.parse(proc.stdout.decode())
+    root = SyntaxTreeNode(tokens)
+
+    # currently language is mostly not correctly extracted, set it to None for
+    # now, so the snippets aren't dropped later
+    snippets = _extract_from_markdown_tree(root, str(file))
+    for snippet in snippets:
+        snippet.language = None
+
+    return snippets
 
 
 def extract(file: Path, filetype: str | None = None) -> list[PartialSnippet]:
