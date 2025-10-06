@@ -1,4 +1,5 @@
 import argparse
+from collections import deque
 import contextlib
 import os
 import subprocess
@@ -14,9 +15,11 @@ import semver
 from mcp_server_qdrant.embeddings.fastembed import FastEmbedProvider
 from qdrant_client import QdrantClient, models
 from rich.progress import track
+from markdown_it.tree import SyntaxTreeNode
+import rich
 
 from qdrant_docs_mcp import LIBRARIES_ROOT
-from qdrant_docs_mcp.tools.extractor import extract
+from qdrant_docs_mcp.tools.extractor import extract, html_to_md_tree, _extract_from_markdown_tree
 from qdrant_docs_mcp.tools.models import (
     Library,
     LibraryConfig,
@@ -148,6 +151,7 @@ def clone_repo(url: str) -> Generator[Path]:
     finally:
         if repo is not None and repo.tmpdir is not None:
             repo.tmpdir.cleanup()
+            del _repo_cache[url]
 
 
 def get_library_config(library: Library, repo: Path) -> LibraryConfig:
@@ -298,6 +302,53 @@ def extract_from_snipdir(
     return snippets
 
 
+def _get_links(
+    root: SyntaxTreeNode
+) -> list[str]:
+    links: list[str] = []
+    for node in root.walk():
+        if node.type == "link":
+            links.append(node.nester_tokens[0].attrs["href"])
+
+    return links
+
+
+def extract_from_website(
+    library: Library,
+    source: SourceConfig,
+    version: str,
+    ) -> list[Snippet]:
+
+    cache: set[str] = set()
+    queue: deque[str] = deque()
+    queue.append(source.url)
+    snippets: list[Snippet] = []
+    
+    while len(queue) > 0:
+        url = queue.pop()
+        if url in cache:
+            continue
+        rich.print(url)
+        cache.add(url)
+        root = html_to_md_tree(url)
+        links = [link.split("#")[0] for link in _get_links(root) if link not in cache and link.startswith(source.url)]
+        queue.extend(links)
+        psnippets = _extract_from_markdown_tree(root, url)
+        for snippet in psnippets:
+            snippets.append(
+                Snippet(
+                    description=snippet.description,
+                    code=snippet.code,
+                    language=library.language,
+                    package_name=library.name,
+                    version=version,
+                    source=url,
+                )
+            )
+
+    return snippets
+
+
 def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
     """Extract all snippets from all sources of a library.
 
@@ -324,7 +375,7 @@ def extract_all(library: Library, config: LibraryConfig) -> list[Snippet]:
                     extract_from_snipdir(library, source, src_repo, version)
                 )
         elif source.src_type == SourceType.WEBSITE:
-            raise NotImplementedError("HTML website source not yet supported.")
+            snippets.extend(extract_from_website(library, source, version))
         else:
             raise ValueError(f"Unknown source type {source.src_type}")
 
@@ -366,15 +417,16 @@ def upsert_snippets(
 
 
 def import_library(
-    name: str,
+    library: Library,
     client: QdrantClient,
     collection_name: str,
     embedding_provider: FastEmbedProvider,
 ):
     """Extract all snippets from a library and upsert them into Qdrant."""
 
-    library = _get_library_by_name(name)
     print(f'Importing library "{library.name}"')
+
+    # TODO: Don't need to clone repo if only source is website
     with clone_repo(library.github) as repo:
         config = get_library_config(library, repo)
         snippets = extract_all(library, config)
@@ -385,6 +437,18 @@ def import_library(
         snippets=snippets,
         embedding_provider=embedding_provider,
     )
+
+
+def import_library_from_builtin(
+    name: str,
+    client: QdrantClient,
+    collection_name: str,
+    embedding_provider: FastEmbedProvider,
+):
+    """Extract all snippets from a library and upsert them into Qdrant."""
+
+    library = _get_library_by_name(name)
+    import_library(library, client, collection_name, embedding_provider)
 
 
 def ensure_collection(
@@ -471,7 +535,7 @@ def main():
     )
 
     for name in names:
-        import_library(
+        import_library_from_builtin(
             name=name,
             collection_name=args.collection_name,
             client=client,

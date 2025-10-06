@@ -168,19 +168,7 @@ def extract_from_rst(file: Path) -> list[PartialSnippet]:
     return _extract_from_markdown_tree(root, str(file))
 
 
-@register_extractor("html")
-def extract_from_html(file: Path | str) -> list[PartialSnippet]:
-    """Extract code snippets from .html files
-
-    Internally, the file is converted to markdown and parsed then.
-
-    Args:
-        file (Path | str): html file or URL to one
-
-    Returns:
-        list[PartialSnippet]: list of snippets with some library information missing
-    """
-
+def html_to_md_tree(file: Path | str) -> SyntaxTreeNode:
     if isinstance(file, Path) and not file.is_file():
         raise ValueError(f"{file} is not a file or URL")
 
@@ -195,6 +183,23 @@ def extract_from_html(file: Path | str) -> list[PartialSnippet]:
     tokens = md.parse(proc.stdout.decode())
     root = SyntaxTreeNode(tokens)
 
+    return root
+
+
+@register_extractor("html")
+def extract_from_html(file: Path | str) -> list[PartialSnippet]:
+    """Extract code snippets from .html files
+
+    Internally, the file is converted to markdown and parsed then.
+
+    Args:
+        file (Path | str): html file or URL to one
+
+    Returns:
+        list[PartialSnippet]: list of snippets with some library information missing
+    """
+
+    root = html_to_md_tree(file)
     # currently language is mostly not correctly extracted, set it to None for
     # now, so the snippets aren't dropped later
     snippets = _extract_from_markdown_tree(root, str(file))
