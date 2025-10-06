@@ -47,4 +47,5 @@ import = [
     "nbconvert>=7.16.6",
     "requests>=2.32.4",
     "semver>=3.0.4",
+    "fastapi[standard]>=0.118.0",
 ]

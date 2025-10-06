@@ -12,11 +12,8 @@
                     "version_type": "github_tags",
                     "value": "https://github.com/qdrant/qdrant-client"
                 },
-                "url": "https://github.com/qdrant/landing_page",
-                "include_files": [
-                    "qdrant-landing/content/documentation/headless/snippets/**/*.md"
-                ],
-                "src_type": "snippets_dir"
+                "url": "https://qdrant.tech/documentation/",
+                "src_type": "website"
             }
         ]
     }
