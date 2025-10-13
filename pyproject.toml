@@ -38,13 +38,3 @@ packages = ["qdrant_docs_mcp"]
 dev = [
     "ipython>=8.37.0",
 ]
-import = [
-    "rich>=14.0.0",
-    "pydantic>=2.11.7",
-    "rst-to-myst==0.4.0",
-    "markdown-it-py<3.dev0",
-    "sphinx>=7.3.7",
-    "nbconvert>=7.16.6",
-    "requests>=2.32.4",
-    "semver>=3.0.4",
-]

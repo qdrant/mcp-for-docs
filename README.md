@@ -55,16 +55,3 @@ uv run mcp dev qdrant_docs_mcp/server.py
 ```bash
 uv run qdrant_docs_mcp/main.py --transport=sse
 ```
-
-### Importing libraries
-
-To import a single supported library, run
-```bash
-uv run -m qdrant_docs_mcp.tools.importer --library 'qdrant-client-python'
-```
-
-Alternatively, you can import all supported libraries with
-```bash
-uv run -m qdrant_docs_mcp.tools.importer --library 'all'
-```
-
